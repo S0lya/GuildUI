@@ -1,0 +1,8 @@
+## GuildUI
+## Author: Solya
+## Version: 0.1 alpha aplphi
+## Notes: UI для гильдий
+## Interface: 30300
+## SavedVariables: GuildUILocalNotes, GuildUILastSeen
+GuildUI.lua
+members.lua

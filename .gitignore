@@ -1,0 +1,23 @@
+# Ignore common temporary and OS files
+Thumbs.db
+.DS_Store
+*.tmp
+*.bak
+*.swp
+*.luac
+
+# VS Code
+.vscode/
+
+# PowerShell history
+ConsoleHost_history.txt
+
+# Node modules if any
+node_modules/
+
+# Optional: build artifacts
+dist/
+
+# You may want to include media folder (textures/icons). If you prefer not to track large binary assets,
+# add the following line to ignore .blp files (but it will exclude the addon's icons/background textures):
+# *.blp
