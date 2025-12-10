@@ -312,12 +312,13 @@ function GuildUI:CreateUI()
   f:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
 
   -- Backdrop (dialog style)
-  f:SetBackdrop({
-    -- use only border here; background texture is a dedicated texture below
-    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-    tile = false, tileSize = 0, edgeSize = 16,
-    insets = { left = 8, right = 8, top = 8, bottom = 8 }
-  })
+    f:SetBackdrop({
+      -- use only border here; background texture is a dedicated texture below
+      edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+      tile = false, tileSize = 0, edgeSize = 19,
+      -- increase insets by 3px so the border/outline appears 3px larger
+      insets = { left = 11, right = 11, top = 11, bottom = 11 }
+    })
   -- make backdrop fully transparent (we use f.bgTexture for the visible background)
   f:SetBackdropColor(0,0,0,0)
 
