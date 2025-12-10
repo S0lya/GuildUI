@@ -1073,7 +1073,8 @@ function GuildUI:CreateNoteEditor()
   box:SetJustifyH("LEFT")
   box:SetJustifyV("TOP")
   box:SetTextInsets(6,6,6,6)
-  box:SetScript("OnEscapePressed", function(self) self:GetParent():GetParent():Hide() end)
+  -- Hide the entire editor frame on Escape (previously hid only inner frame)
+  box:SetScript("OnEscapePressed", function(self) if ed then ed:Hide() end end)
   -- ensure the scroll frame scrolls with the editbox
   scroll:SetScrollChild(box)
   ed.editBox = box
