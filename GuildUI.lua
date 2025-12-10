@@ -363,6 +363,45 @@ function GuildUI:CreateUI()
   if countFS.SetShadowColor then countFS:SetShadowColor(0,0,0,1) end
   self.countFS = countFS
 
+  -- Quick invite input + button to the left of the online counter
+  local inviteTopInput = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+  inviteTopInput:SetSize(120, 20)
+  inviteTopInput:SetAutoFocus(false)
+  inviteTopInput:SetPoint("TOPRIGHT", countFS, "TOPLEFT", -8, 0)
+  inviteTopInput:SetText("Ник...")
+  inviteTopInput:SetScript("OnEditFocusGained", function(self) if self:GetText() == "Ник..." then self:SetText("") end end)
+  inviteTopInput:SetScript("OnEditFocusLost", function(self) if self:GetText() == "" then self:SetText("Ник...") end end)
+  inviteTopInput:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+  -- trigger invite on Enter
+  inviteTopInput:SetScript("OnEnterPressed", function(self)
+    local txt = (self:GetText() or ""):gsub("^%s+",""):gsub("%s+$","")
+    if not txt or txt == "" or txt == "Ник..." then
+      print("[GuildUI] Введите ник для приглашения.")
+      return
+    end
+    if UnitName("player") == txt then print("[GuildUI] Нельзя приглашать себя.") return end
+    InviteUnit(txt)
+    print("[GuildUI] Приглашение отправлено: "..txt)
+    self:ClearFocus()
+  end)
+  self.topInviteInput = inviteTopInput
+
+  local inviteTopBtn = CreateButton(f, "GuildUI_TopInviteBtn", "Пригл", 50, 20)
+  inviteTopBtn:SetPoint("TOPRIGHT", inviteTopInput, "TOPLEFT", -6, 0)
+  inviteTopBtn:SetScript("OnClick", function()
+    local txt = (inviteTopInput:GetText() or ""):gsub("^%s+",""):gsub("%s+$","")
+    if not txt or txt == "" or txt == "Ник..." then
+      print("[GuildUI] Введите ник для приглашения.")
+      return
+    end
+    if UnitName("player") == txt then print("[GuildUI] Нельзя приглашать себя.") return end
+    InviteUnit(txt)
+    print("[GuildUI] Приглашение отправлено: "..txt)
+    inviteTopInput:ClearFocus()
+  end)
+  inviteTopBtn:SetNormalFontObject("GameFontNormalSmall")
+  self.topInviteBtn = inviteTopBtn
+
   -- Left panel (member list)
   -- Separated into members.lua module
   if not self.CreateMembersUI then
