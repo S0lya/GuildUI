@@ -569,7 +569,6 @@ function GuildUI:CreateUI()
   end)
 
   local promoteBtn = CreateButton(right, "GuildUI_PromoteBtn", "Повысить", 120, 24)
-    promoteBtn:SetPoint("BOTTOMLEFT", demoteBtn, "TOPLEFT", 0, 6)
   promoteBtn:SetScript("OnClick", function()
     -- derive target name from right panel (more robust if selection index is stale)
     local targetName = nil
@@ -621,6 +620,9 @@ function GuildUI:CreateUI()
     print("[GuildUI] Понижение: "..targetName)
     if type(GuildRoster) == "function" then GuildRoster() end
   end)
+
+  -- Now that demoteBtn exists, anchor promoteBtn above it so both are visible
+  promoteBtn:SetPoint("BOTTOMLEFT", demoteBtn, "TOPLEFT", 0, 6)
 
   local kickBtn = CreateButton(right, "GuildUI_KickBtn", "Исключить", 120, 24)
   kickBtn:SetPoint("BOTTOMLEFT", demoteBtn, "TOPLEFT", 0, 6)
