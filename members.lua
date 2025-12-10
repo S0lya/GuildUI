@@ -8,8 +8,7 @@ function GuildUI:CreateMembersUI(parent)
   local left = CreateFrame("Frame", nil, parent)
   -- make left panel extend to match top/bottom margins inside main frame
   left:SetSize(312, 378)
-  -- push left panel a bit lower to avoid overlapping top controls (invite input / title)
-  left:SetPoint("TOPLEFT", parent, "TOPLEFT", 16, -68)
+  left:SetPoint("TOPLEFT", parent, "TOPLEFT", 16, -46)
 
   left.bg = CreateFrame("Frame", nil, left)
   left.bg:SetAllPoints(left)
