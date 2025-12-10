@@ -625,7 +625,8 @@ function GuildUI:CreateUI()
   promoteBtn:SetPoint("BOTTOMLEFT", demoteBtn, "TOPLEFT", 0, 6)
 
   local kickBtn = CreateButton(right, "GuildUI_KickBtn", "Исключить", 120, 24)
-  kickBtn:SetPoint("BOTTOMLEFT", demoteBtn, "TOPLEFT", 0, 6)
+  -- place Kick above Promote so buttons stack: Invite -> Demote -> Promote -> Kick
+  kickBtn:SetPoint("BOTTOMLEFT", promoteBtn, "TOPLEFT", 0, 6)
   kickBtn:SetScript("OnClick", function()
     local idx = GuildUI.selected
     if not idx then print("[GuildUI] Выберите участника сначала.") return end
