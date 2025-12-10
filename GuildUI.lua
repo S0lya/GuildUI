@@ -363,6 +363,66 @@ function GuildUI:CreateUI()
   if countFS.SetShadowColor then countFS:SetShadowColor(0,0,0,1) end
   self.countFS = countFS
 
+  -- Small launcher button to open a top invite popup
+  local topInviteLauncher = CreateButton(f, "GuildUI_TopInviteLauncher", "Пригл", 48, 20)
+  topInviteLauncher:SetPoint("TOPRIGHT", countFS, "TOPLEFT", -8, 0)
+  topInviteLauncher:SetNormalFontObject("GameFontNormalSmall")
+  self.topInviteLauncher = topInviteLauncher
+
+  -- Create the top-invite popup (hidden by default)
+  local function CreateTopInvitePopup()
+    if GuildUI.topInvitePopup then return GuildUI.topInvitePopup end
+    local pf = CreateFrame("Frame", "GuildUI_TopInvitePopup", f, "BackdropTemplate")
+    pf:SetSize(260, 56)
+    pf:SetPoint("TOP", f, "TOP", 0, -28)
+    pf:SetBackdrop({ edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", edgeSize = 8, bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", insets = { left = 6, right = 6, top = 6, bottom = 6 } })
+    pf:SetBackdropColor(0.06,0.06,0.06,0.95)
+    pf:EnableMouse(true)
+    pf:SetFrameStrata("DIALOG")
+
+    local ed = CreateFrame("EditBox", nil, pf, "InputBoxTemplate")
+    ed:SetSize(160, 22)
+    ed:SetPoint("LEFT", pf, "LEFT", 10, 0)
+    ed:SetAutoFocus(false)
+    ed:SetText("Ник игрока")
+    ed:SetScript("OnEditFocusGained", function(self) if self:GetText() == "Ник игрока" then self:SetText("") end end)
+    ed:SetScript("OnEditFocusLost", function(self) if self:GetText() == "" then self:SetText("Ник игрока") end end)
+    ed:SetScript("OnEscapePressed", function(self) pf:Hide() end)
+    pf.edit = ed
+
+    local inviteBtn = CreateButton(pf, nil, "Пригласить", 80, 22)
+    inviteBtn:SetPoint("RIGHT", pf, "RIGHT", -10, 0)
+    inviteBtn:SetScript("OnClick", function()
+      local txt = (ed:GetText() or ""):gsub("^%s+",""):gsub("%s+$","")
+      if not txt or txt == "" or txt == "Ник игрока" then
+        print("[GuildUI] Введите ник для приглашения.")
+        return
+      end
+      if UnitName("player") == txt then print("[GuildUI] Нельзя приглашать себя.") return end
+      InviteUnit(txt)
+      print("[GuildUI] Приглашение отправлено: "..txt)
+      pf:Hide()
+    end)
+
+    local cancelBtn = CreateButton(pf, nil, "Отмена", 60, 22)
+    cancelBtn:SetPoint("RIGHT", inviteBtn, "LEFT", -6, 0)
+    cancelBtn:SetScript("OnClick", function() pf:Hide() end)
+
+    pf:Hide()
+    GuildUI.topInvitePopup = pf
+    return pf
+  end
+
+  topInviteLauncher:SetScript("OnClick", function()
+    local popup = CreateTopInvitePopup()
+    if popup:IsShown() then
+      popup:Hide()
+    else
+      popup:Show()
+      if popup.edit then popup.edit:SetFocus() end
+    end
+  end)
+
 
   -- Left panel (member list)
   -- Separated into members.lua module
