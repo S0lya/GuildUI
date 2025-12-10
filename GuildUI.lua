@@ -355,7 +355,7 @@ function GuildUI:CreateUI()
   -- Online/total counter to the left of the close button
   local countFS = CreateFont(f, 11, 1, 1, 1)
   countFS:SetPoint("TOPRIGHT", close, "TOPLEFT", -8, -10)
-  countFS:SetText("0/0")
+  countFS:SetText("Онлайн: 0/0")
   if countFS.SetShadowColor then countFS:SetShadowColor(0,0,0,1) end
   self.countFS = countFS
 
@@ -993,7 +993,7 @@ function GuildUI:UpdateMembers()
       for _, m in ipairs(self.members) do
         if m and m.online then online = online + 1 end
       end
-      pcall(function() self.countFS:SetText(tostring(online) .. "/" .. tostring(total)) end)
+      pcall(function() self.countFS:SetText("Онлайн: "..tostring(online) .. "/" .. tostring(total)) end)
     end
 
     local gname = nil
