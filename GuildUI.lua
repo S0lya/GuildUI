@@ -326,7 +326,7 @@ function GuildUI:CreateUI()
   f.bgTexture = f:CreateTexture(nil, "BACKGROUND")
   f.bgTexture:SetTexture("Interface\\AddOns\\GuildUI\\media\\background\\background.blp")
   -- inset the background texture so it doesn't overlap the widened border
-  local inset = 11
+  local inset = 6
   f.bgTexture:SetPoint("TOPLEFT", f, "TOPLEFT", inset, -inset)
   f.bgTexture:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inset, inset)
   -- ensure the background texture is on the lowest draw sublayer
