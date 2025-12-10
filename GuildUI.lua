@@ -404,8 +404,10 @@ function GuildUI:CreateUI()
       pf:Hide()
     end)
 
-    local cancelBtn = CreateButton(pf, nil, "Отмена", 60, 22)
+    -- create a compact cancel button without visible text (icon-only/blank)
+    local cancelBtn = CreateButton(pf, nil, nil, 24, 22)
     cancelBtn:SetPoint("RIGHT", inviteBtn, "LEFT", -6, 0)
+    if cancelBtn.SetText then pcall(function() cancelBtn:SetText("") end) end
     cancelBtn:SetScript("OnClick", function() pf:Hide() end)
 
     pf:Hide()
