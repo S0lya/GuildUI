@@ -315,9 +315,9 @@ function GuildUI:CreateUI()
     f:SetBackdrop({
       -- use only border here; background texture is a dedicated texture below
       edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-      tile = false, tileSize = 0, edgeSize = 19,
+      tile = false, tileSize = 0, edgeSize = 16,
       -- increase insets by 3px so the border/outline appears 3px larger
-      insets = { left = 11, right = 11, top = 11, bottom = 11 }
+      insets = { left = 14, right = 14, top = 14, bottom = 14 }
     })
   -- make backdrop fully transparent (we use f.bgTexture for the visible background)
   f:SetBackdropColor(0,0,0,0)
@@ -325,7 +325,10 @@ function GuildUI:CreateUI()
   -- Add a dedicated background texture (more reliable than backdrop bgFile)
   f.bgTexture = f:CreateTexture(nil, "BACKGROUND")
   f.bgTexture:SetTexture("Interface\\AddOns\\GuildUI\\media\\background\\background.blp")
-  f.bgTexture:SetAllPoints(f)
+  -- inset the background texture so it doesn't overlap the widened border
+  local inset = 11
+  f.bgTexture:SetPoint("TOPLEFT", f, "TOPLEFT", inset, -inset)
+  f.bgTexture:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inset, inset)
   -- ensure the background texture is on the lowest draw sublayer
   f.bgTexture:SetDrawLayer("BACKGROUND", -8)
   f.bgTexture:SetAlpha(1)
