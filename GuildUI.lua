@@ -569,7 +569,7 @@ function GuildUI:CreateUI()
   end)
 
   local promoteBtn = CreateButton(right, "GuildUI_PromoteBtn", "Повысить", 120, 24)
-  promoteBtn:SetPoint("BOTTOMLEFT", inviteBtn, "TOPLEFT", 0, 6)
+    promoteBtn:SetPoint("BOTTOMLEFT", demoteBtn, "TOPLEFT", 0, 6)
   promoteBtn:SetScript("OnClick", function()
     -- derive target name from right panel (more robust if selection index is stale)
     local targetName = nil
@@ -598,7 +598,7 @@ function GuildUI:CreateUI()
   end)
 
   local demoteBtn = CreateButton(right, "GuildUI_DemoteBtn", "Понизить", 120, 24)
-  demoteBtn:SetPoint("BOTTOMLEFT", promoteBtn, "TOPLEFT", 0, 6)
+    demoteBtn:SetPoint("BOTTOMLEFT", inviteBtn, "TOPLEFT", 0, 6)
   demoteBtn:SetScript("OnClick", function()
     -- derive target name from right panel (fallback to selected index)
     local targetName = nil
