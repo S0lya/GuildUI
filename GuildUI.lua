@@ -354,7 +354,7 @@ function GuildUI:CreateUI()
   close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -6, -6)
   -- Online/total counter to the left of the close button
   local countFS = CreateFont(f, 11, 1, 1, 1)
-  countFS:SetPoint("TOPRIGHT", close, "TOPLEFT", -8, 0)
+  countFS:SetPoint("TOPRIGHT", close, "TOPLEFT", -8, -10)
   countFS:SetText("0/0")
   if countFS.SetShadowColor then countFS:SetShadowColor(0,0,0,1) end
   self.countFS = countFS
