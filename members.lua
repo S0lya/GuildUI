@@ -1,5 +1,3 @@
--- members.lua — modularized Left panel (Участники)
--- Contains creation of member list UI, sorting and UpdateList logic
 
 if not GuildUI then GuildUI = {} end
 
@@ -122,6 +120,11 @@ function GuildUI:CreateMembersUI(parent)
   end
 
   function GuildUI:SetSort(key)
+    -- preserve selected member name so visual selection survives sorting
+    local selName = nil
+    if self.selected and self.members and self.members[self.selected] and self.members[self.selected].name then
+      selName = self.selectedName or self.members[self.selected].name
+    end
     if self.sortKey == key then
       self.sortDir = - (self.sortDir or 1)
     else
@@ -130,7 +133,18 @@ function GuildUI:CreateMembersUI(parent)
     end
     self:ApplySort()
     if self.UpdateHeaderSortIndicators then self:UpdateHeaderSortIndicators() end
+    -- rebuild the list then restore selection by name
     self:UpdateList("")
+    if selName then
+      for i, m in ipairs(self.members) do
+        if m and m.name and string.lower(m.name) == string.lower(selName) then
+          self.selected = i
+          self.selectedName = m.name
+          self:SelectMember(i)
+          break
+        end
+      end
+    end
   end
 
   -- store UI refs
@@ -230,9 +244,11 @@ function GuildUI:CreateMembersUI(parent)
           row.rankFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
           row.rankFS:SetPoint("LEFT", row, "LEFT", 84, 0)
           row.rankFS:SetWidth(60)
+          -- keep only the class icon; hide textual class column
           row.classFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
           row.classFS:SetPoint("LEFT", row, "LEFT", 142, 0)
           row.classFS:SetWidth(44)
+          row.classFS:Hide()
           row.classIcon = row:CreateTexture(nil, "OVERLAY")
           row.classIcon:SetSize(14, 14)
           local classColLeft = 142
@@ -240,6 +256,8 @@ function GuildUI:CreateMembersUI(parent)
           local iconW = 14
           local iconOffset = classColLeft + (classColWidth - iconW) / 2
           row.classIcon:SetPoint("LEFT", row, "LEFT", iconOffset, 0)
+          -- draw class icon above the highlight so it stays visually unchanged
+          row.classIcon:SetDrawLayer("OVERLAY", 2)
           row.lastFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
           row.lastFS:SetPoint("LEFT", row, "LEFT", 210, 0)
           row.lastFS:SetWidth(70)
@@ -247,39 +265,42 @@ function GuildUI:CreateMembersUI(parent)
           if row.rankFS.SetJustifyH then row.rankFS:SetJustifyH("LEFT") end
           if row.classFS.SetJustifyH then row.classFS:SetJustifyH("LEFT") end
           if row.lastFS.SetJustifyH then row.lastFS:SetJustifyH("LEFT") end
-          row.hl = row:CreateTexture(nil, "BACKGROUND")
-          row.hl:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight")
-          row.hl:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
-          row.hl:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
-          row.hl:SetWidth(294)
-          row.hl:SetAlpha(0)
+          -- subtle center-only highlight (no side stripes)
+          row.hl = CreateFrame("Frame", nil, row)
+          row.hl:SetAllPoints(row)
+          -- put highlight behind row contents
+          local rl = row:GetFrameLevel()
+          if rl and rl > 0 then row.hl:SetFrameLevel(rl - 1) end
+          -- center band only
+          row.hl.center = row.hl:CreateTexture(nil, "BACKGROUND")
+          row.hl.center:SetTexture("Interface\\Buttons\\WHITE8x8")
+          row.hl.center:SetVertexColor(0.85, 0.65, 0.18, 1)
+          -- tighter inset so it never reaches text/icons
+          row.hl.center:SetPoint("TOPLEFT", row.hl, "TOPLEFT", 0, -2)
+          row.hl.center:SetPoint("BOTTOMRIGHT", row.hl, "BOTTOMRIGHT", 12, 2)
+          row.hl.center:SetAlpha(0)
           row.hl:Show()
+
           row:SetScript("OnEnter", function(self)
-            if self.hl and UIFrameFadeIn then
-              UIFrameFadeIn(self.hl, 0.15, self.hl:GetAlpha() or 0, 1)
-            elseif self.hl then
-              self.hl:SetAlpha(1)
+            if self.hl and self.hl.center then
+              if UIFrameFadeIn then UIFrameFadeIn(self.hl.center, 0.15, self.hl.center:GetAlpha() or 0, 0.18) else self.hl.center:SetAlpha(0.18) end
             end
-            if self.nameFS then self.nameFS:SetTextColor(1,1,0) end
-            if self.rankFS then self.rankFS:SetTextColor(1,1,0) end
-            if self.classIcon then self.classIcon:SetVertexColor(1,1,0) end
-            if self.lastFS then self.lastFS:SetTextColor(1,1,0) end
+            if self.nameFS then self.nameFS:SetTextColor(1,1,1) end
+            if self.rankFS then self.rankFS:SetTextColor(1,1,1) end
+            if self.lastFS then self.lastFS:SetTextColor(1,1,1) end
           end)
+
           row:SetScript("OnLeave", function(self)
-            -- keep selection highlight if this row is currently selected
             if GuildUI and GuildUI.selected and self._memberIndex == GuildUI.selected then
-              if self.hl then
-                if UIFrameFadeIn then UIFrameFadeIn(self.hl, 0.15, self.hl:GetAlpha() or 0, 1) else self.hl:SetAlpha(1) end
+              if self.hl and self.hl.center then
+                if UIFrameFadeIn then UIFrameFadeIn(self.hl.center, 0.12, self.hl.center:GetAlpha() or 0, 0.18) else self.hl.center:SetAlpha(0.18) end
               end
-              if self.nameFS then self.nameFS:SetTextColor(1,1,0) end
-              if self.rankFS then self.rankFS:SetTextColor(1,1,0) end
-              if self.classIcon then self.classIcon:SetVertexColor(1,1,0) end
-              if self.lastFS then self.lastFS:SetTextColor(1,1,0) end
+              if self.nameFS then self.nameFS:SetTextColor(1,1,1) end
+              if self.rankFS then self.rankFS:SetTextColor(1,1,1) end
+              if self.lastFS then self.lastFS:SetTextColor(1,1,1) end
             else
-              if self.hl and UIFrameFadeOut then
-                UIFrameFadeOut(self.hl, 0.15, self.hl:GetAlpha() or 1, 0)
-              elseif self.hl then
-                self.hl:SetAlpha(0)
+              if self.hl and self.hl.center then
+                if UIFrameFadeOut then UIFrameFadeOut(self.hl.center, 0.15, self.hl.center:GetAlpha() or 0.18, 0) else self.hl.center:SetAlpha(0) end
               end
               if self.nameFS and self.nameColor then pcall(function() self.nameFS:SetTextColor(self.nameColor[1], self.nameColor[2], self.nameColor[3]) end) end
               if self.rankFS and self.rankColor then pcall(function() self.rankFS:SetTextColor(self.rankColor[1], self.rankColor[2], self.rankColor[3]) end) end
@@ -294,10 +315,7 @@ function GuildUI:CreateMembersUI(parent)
         end
         row._memberIndex = i
         row:SetPoint("TOPLEFT", left, "TOPLEFT", 8, -74 - (idx-1)*rowSpacing)
-        row.nameFS:SetText(m.name or "")
-        row.rankFS:SetText(m.rank or "")
-        row.classFS:SetText("")
-        local cr, cg, cb = GetClassColorByName(m.class)
+        -- resolve class icon (robust: try token mapping, fallback to sanitized class name)
         do
           local token = ResolveClassToken(m.class)
           local iconFile = nil
@@ -320,6 +338,13 @@ function GuildUI:CreateMembersUI(parent)
             row.classIcon:Hide()
           end
         end
+        -- set displayed texts
+        if row.nameFS and row.nameFS.SetText then row.nameFS:SetText(m.name or "") end
+        if row.rankFS and row.rankFS.SetText then row.rankFS:SetText(m.rank or "") end
+        -- do not show class text (icons only)
+        if row.classFS and row.classFS.SetText then row.classFS:SetText("") end
+        -- class color for potential use elsewhere
+        local cr, cg, cb = GetClassColorByName(m.class)
         row.nameColor = {1,1,1}
         row.rankColor = {1,1,1}
         row.classColor = {cr, cg, cb}
@@ -328,7 +353,29 @@ function GuildUI:CreateMembersUI(parent)
         if row.rankFS and row.rankFS.SetTextColor and row.rankColor then pcall(function() row.rankFS:SetTextColor(unpack(row.rankColor)) end) end
         if row.lastFS and row.lastFS.SetTextColor and row.lastColor then pcall(function() row.lastFS:SetTextColor(unpack(row.lastColor)) end) end
         if row.classIcon then row.classIcon:SetVertexColor(1,1,1) end
-        if row.hl then row.hl:SetAlpha(0) end
+        if row.hl and row.hl.center then
+          local isSelected = false
+          if self.selected and self.members and self.members[self.selected] and self.members[self.selected].name then
+            -- prefer name comparison because indices may change after sorting
+            local selName = self.selectedName or self.members[self.selected].name
+            if selName and m.name and string.lower(selName) == string.lower(m.name) then
+              isSelected = true
+            end
+          elseif self.selected and self.selected == i then
+            isSelected = true
+          end
+          if isSelected then
+            if UIFrameFadeIn then UIFrameFadeIn(row.hl.center, 0.15, row.hl.center:GetAlpha() or 0, 0.18) else row.hl.center:SetAlpha(0.18) end
+            if row.nameFS then pcall(function() row.nameFS:SetTextColor(1,1,1) end) end
+            if row.rankFS then pcall(function() row.rankFS:SetTextColor(1,1,1) end) end
+            if row.lastFS then pcall(function() row.lastFS:SetTextColor(1,1,1) end) end
+          else
+            if UIFrameFadeOut then UIFrameFadeOut(row.hl.center, 0.15, row.hl.center:GetAlpha() or 0.18, 0) else row.hl.center:SetAlpha(0) end
+            if row.nameFS and row.nameColor then pcall(function() row.nameFS:SetTextColor(row.nameColor[1], row.nameColor[2], row.nameColor[3]) end) end
+            if row.rankFS and row.rankColor then pcall(function() row.rankFS:SetTextColor(row.rankColor[1], row.rankColor[2], row.rankColor[3]) end) end
+            if row.lastFS and row.lastColor then pcall(function() row.lastFS:SetTextColor(row.lastColor[1], row.lastColor[2], row.lastColor[3]) end) end
+          end
+        end
         if self.showZoneColumn == nil then self.showZoneColumn = true end
         local skipMember = false
         if not self.showZoneColumn and self.onlineFilter and self.onlineFilter ~= "all" then

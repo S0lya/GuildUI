@@ -341,31 +341,25 @@ function GuildUI:CreateUI()
   -- ensure a solid black outline/shadow for readability
   if title.SetShadowColor then title:SetShadowColor(0,0,0,1) end
   if title.SetShadowOffset then title:SetShadowOffset(1, -1) end
+  -- expose title so other modules can update it (e.g. UpdateMembers)
+  self.title = title
   -- show guild name when available, otherwise fallback to addon name
   local gname = nil
   if IsInGuild and IsInGuild() and GetGuildInfo then
     gname = GetGuildInfo("player")
   end
-  if gname and gname ~= "" then
-    title:SetText(gname)
-  else
-    title:SetText("GuildUI — Управление гильдией")
-  end
-  self.title = title
-
-  -- Close button
   local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -6, -6)
   -- Online/total counter to the left of the close button
   local countFS = CreateFont(f, 11, 1, 1, 1)
-  countFS:SetPoint("TOPRIGHT", close, "TOPLEFT", -8, -10)
+  countFS:SetPoint("TOPRIGHT", close, "TOPLEFT", -8, -20)
   countFS:SetText("Онлайн: 0/0")
   if countFS.SetShadowColor then countFS:SetShadowColor(0,0,0,1) end
   self.countFS = countFS
 
   -- Small launcher button to open a top invite popup
   local topInviteLauncher = CreateButton(f, "GuildUI_TopInviteLauncher", "Пригл", 48, 20)
-  topInviteLauncher:SetPoint("TOPRIGHT", countFS, "TOPLEFT", -8, 0)
+  topInviteLauncher:SetPoint("RIGHT", countFS, "LEFT", -8, 0)
   topInviteLauncher:SetNormalFontObject("GameFontNormalSmall")
   self.topInviteLauncher = topInviteLauncher
 
@@ -375,8 +369,19 @@ function GuildUI:CreateUI()
     local pf = CreateFrame("Frame", "GuildUI_TopInvitePopup", f, "BackdropTemplate")
     pf:SetSize(260, 56)
     pf:SetPoint("TOP", f, "TOP", 0, -28)
-    pf:SetBackdrop({ edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", edgeSize = 8, bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", insets = { left = 6, right = 6, top = 6, bottom = 6 } })
-    pf:SetBackdropColor(0.06,0.06,0.06,0.95)
+    -- keep a border/backdrop for the frame but use a custom background texture
+    pf:SetBackdrop({ edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", edgeSize = 8, insets = { left = 2, right = 2, top = 2, bottom = 2 } })
+    pf:SetBackdropColor(0,0,0,0)
+    -- dedicated background texture using our media background (background2.blp)
+    pf.bgTexture = pf:CreateTexture(nil, "BACKGROUND")
+    pf.bgTexture:SetTexture("Interface\\AddOns\\GuildUI\\media\\background\\background2.blp")
+    -- inset the texture so it doesn't overlap the frame border
+    -- reduce inset from 6 -> 2 so the background expands 4px on each side
+    local pinset = 2
+    pf.bgTexture:SetPoint("TOPLEFT", pf, "TOPLEFT", pinset, -pinset)
+    pf.bgTexture:SetPoint("BOTTOMRIGHT", pf, "BOTTOMRIGHT", -pinset, pinset)
+    pf.bgTexture:SetDrawLayer("BACKGROUND", -2)
+    pf.bgTexture:SetAlpha(1)
     pf:EnableMouse(true)
     pf:SetFrameStrata("DIALOG")
 
@@ -390,7 +395,7 @@ function GuildUI:CreateUI()
     ed:SetScript("OnEscapePressed", function(self) pf:Hide() end)
     pf.edit = ed
 
-    local inviteBtn = CreateButton(pf, nil, "Пригласить", 80, 22)
+    local inviteBtn = CreateButton(pf, nil, "В группу", 80, 22)
     inviteBtn:SetPoint("RIGHT", pf, "RIGHT", -10, 0)
     inviteBtn:SetScript("OnClick", function()
       local txt = (ed:GetText() or ""):gsub("^%s+",""):gsub("%s+$","")
@@ -404,11 +409,7 @@ function GuildUI:CreateUI()
       pf:Hide()
     end)
 
-    -- create a compact cancel button without visible text (icon-only/blank)
-    local cancelBtn = CreateButton(pf, nil, nil, 24, 22)
-    cancelBtn:SetPoint("RIGHT", inviteBtn, "LEFT", -6, 0)
-    if cancelBtn.SetText then pcall(function() cancelBtn:SetText("") end) end
-    cancelBtn:SetScript("OnClick", function() pf:Hide() end)
+    -- (removed compact cancel button to simplify UI)
 
     pf:Hide()
     GuildUI.topInvitePopup = pf
@@ -618,7 +619,7 @@ function GuildUI:CreateUI()
   end)
 
   -- Action buttons
-  local inviteBtn = CreateButton(right, "GuildUI_InviteBtn", "Пригласить", 120, 24)
+  local inviteBtn = CreateButton(right, "GuildUI_InviteBtn", "В группу", 120, 24)
   inviteBtn:SetPoint("BOTTOMLEFT", right, "BOTTOMLEFT", 8, 8)
   inviteBtn:SetScript("OnClick", function()
     local idx = GuildUI.selected
@@ -702,6 +703,21 @@ function GuildUI:CreateUI()
     print("[GuildUI] Исключение: "..target.name)
   end)
 
+  -- Management placeholder button (visible only to guild master)
+  local manageBtn = CreateButton(right, "GuildUI_ManageBtn", "Управление", 120, 24)
+  -- place above Kick so buttons stack: Invite -> Demote -> Promote -> Kick -> Управление
+  manageBtn:SetPoint("BOTTOMLEFT", kickBtn, "TOPLEFT", 0, 6)
+  manageBtn:SetScript("OnClick", function()
+    print("[GuildUI] Управление нажата (заглушка)")
+  end)
+  manageBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText("Управление гильдией\n(доступно только ГМу)")
+    GameTooltip:Show()
+  end)
+  manageBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+  self.manageBtn = manageBtn
+
   -- Ensure note fields stay under the labels in the info area
   if pubNoteFS then
     pubNoteFS:ClearAllPoints()
@@ -715,21 +731,25 @@ function GuildUI:CreateUI()
   function GuildUI:SelectMember(index)
     local m = self.members[index]
     if not m then return end
+    -- record selection (index + name) so other operations (sorting, updates)
+    -- can restore the visual highlight correctly
+    self.selected = index
+    self.selectedName = m.name
     -- update left-list visuals: highlight selected row and reset others
     if self.rows then
       for _, row in ipairs(self.rows) do
         if row and row._memberIndex then
           if row._memberIndex == index then
-            if row.hl then
-              if UIFrameFadeIn then UIFrameFadeIn(row.hl, 0.15, row.hl:GetAlpha() or 0, 1) else row.hl:SetAlpha(1) end
+            if row.hl and row.hl.center then
+              if UIFrameFadeIn then UIFrameFadeIn(row.hl.center, 0.15, row.hl.center:GetAlpha() or 0, 0.18) else row.hl.center:SetAlpha(0.18) end
             end
-            if row.nameFS and row.nameFS.SetTextColor then pcall(function() row.nameFS:SetTextColor(1,1,0) end) end
-            if row.rankFS and row.rankFS.SetTextColor then pcall(function() row.rankFS:SetTextColor(1,1,0) end) end
-            if row.classIcon and row.classIcon.SetVertexColor then pcall(function() row.classIcon:SetVertexColor(1,1,0) end) end
-            if row.lastFS and row.lastFS.SetTextColor then pcall(function() row.lastFS:SetTextColor(1,1,0) end) end
+            if row.nameFS and row.nameFS.SetTextColor then pcall(function() row.nameFS:SetTextColor(1,1,1) end) end
+            if row.rankFS and row.rankFS.SetTextColor then pcall(function() row.rankFS:SetTextColor(1,1,1) end) end
+            -- keep class icon color unchanged on selection (do not paint it yellow)
+            if row.lastFS and row.lastFS.SetTextColor then pcall(function() row.lastFS:SetTextColor(1,1,1) end) end
           else
-            if row.hl then
-              if UIFrameFadeOut then UIFrameFadeOut(row.hl, 0.15, row.hl:GetAlpha() or 1, 0) else row.hl:SetAlpha(0) end
+            if row.hl and row.hl.center then
+              if UIFrameFadeOut then UIFrameFadeOut(row.hl.center, 0.15, row.hl.center:GetAlpha() or 0.18, 0) else row.hl.center:SetAlpha(0) end
             end
             if row.nameFS and row.nameColor then pcall(function() row.nameFS:SetTextColor(unpack(row.nameColor)) end) end
             if row.rankFS and row.rankColor then pcall(function() row.rankFS:SetTextColor(unpack(row.rankColor)) end) end
@@ -1010,6 +1030,25 @@ function GuildUI:UpdateMembers()
   -- re-apply current sort (if any) so user choice persists across roster updates
   if self.ApplySort then self:ApplySort() end
   if self.UpdateHeaderSortIndicators then self:UpdateHeaderSortIndicators() end
+
+  -- Update management button state (only enabled for guild master)
+  if self.manageBtn then
+    local isGM = false
+    local player = UnitName("player")
+    for _, m in ipairs(self.members) do
+      if m and m.name and string.lower(m.name) == string.lower(player) then
+        if tonumber(m.rankIndex) == 0 then isGM = true end
+        break
+      end
+    end
+    if isGM then
+      if self.manageBtn.Enable then pcall(function() self.manageBtn:Enable() end) end
+      self.manageBtn:SetAlpha(1)
+    else
+      if self.manageBtn.Disable then pcall(function() self.manageBtn:Disable() end) end
+      self.manageBtn:SetAlpha(0.5)
+    end
+  end
 
   -- restore selection if possible (match by name) - after sorting to get correct indices
   local prevSelectedName = nil
