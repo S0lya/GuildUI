@@ -352,6 +352,12 @@ function GuildUI:CreateUI()
   -- Close button
   local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -6, -6)
+  -- Online/total counter to the left of the close button
+  local countFS = CreateFont(f, 11, 1, 1, 1)
+  countFS:SetPoint("TOPRIGHT", close, "TOPLEFT", -8, 0)
+  countFS:SetText("0/0")
+  if countFS.SetShadowColor then countFS:SetShadowColor(0,0,0,1) end
+  self.countFS = countFS
 
   -- Left panel (member list)
   -- Separated into members.lua module
@@ -980,6 +986,16 @@ function GuildUI:UpdateMembers()
 
   -- Update frame title to show current guild name (if any)
   if self.title then
+    -- Update online/total counter (number of members with explicit online flag)
+    if self.countFS then
+      local total = #self.members
+      local online = 0
+      for _, m in ipairs(self.members) do
+        if m and m.online then online = online + 1 end
+      end
+      pcall(function() self.countFS:SetText(tostring(online) .. "/" .. tostring(total)) end)
+    end
+
     local gname = nil
     if IsInGuild and IsInGuild() and GetGuildInfo then
       gname = GetGuildInfo("player")
