@@ -392,8 +392,15 @@ function GuildUI:CreateUI()
     ed:SetScript("OnEscapePressed", function(self) pf:Hide() end)
     pf.edit = ed
 
-    local inviteBtn = CreateButton(pf, nil, "Пригласить", 80, 22)
-    inviteBtn:SetPoint("RIGHT", pf, "RIGHT", -10, 0)
+    -- Title
+    local titleText = pf:CreateFontString(nil, "OVERLAY")
+    titleText:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
+    titleText:SetPoint("TOP", pf, "TOP", 0, -8)
+    titleText:SetText("Пригласить игрока в гильдию")
+    titleText:SetTextColor(1, 0.82, 0, 1)
+
+    local inviteBtn = CreateButton(pf, nil, "Пригласить", 100, 22)
+    inviteBtn:SetPoint("RIGHT", pf, "RIGHT", -30, 0)
     inviteBtn:SetScript("OnClick", function()
       local txt = (ed:GetText() or ""):gsub("^%s+",""):gsub("%s+$","")
       if not txt or txt == "" or txt == "Ник игрока" then
@@ -710,8 +717,8 @@ function GuildUI:CreateUI()
       local form = CreateFrame("Frame", "GuildUI_EditForm", UIParent, "BackdropTemplate")
       form:SetSize(400, 300)
       form:SetPoint("CENTER", UIParent, "CENTER")
-      form:SetBackdrop({bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", edgeSize = 16, insets = {left = 4, right = 4, top = 4, bottom = 4}})
-      form:SetBackdropColor(0, 0, 0, 1)
+      form:SetBackdrop({bgFile = "Interface\\AddOns\\GuildUI\\media\\background\\background2.blp", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", edgeSize = 16, insets = {left = 4, right = 4, top = 4, bottom = 4}})
+      form:SetBackdropColor(1, 1, 1, 1)
       form:SetFrameStrata("FULLSCREEN")
       form:SetFrameLevel(100)
       form:EnableMouse(true)
@@ -737,11 +744,17 @@ function GuildUI:CreateUI()
       motdLabel:SetText("Сообщение дня (MOTD):")
       
       -- MOTD edit
-      local motdEdit = CreateFrame("EditBox", nil, form, "InputBoxTemplate")
+      local motdEdit = CreateFrame("EditBox", nil, form, "BackdropTemplate")
       motdEdit:SetSize(370, 22)
       motdEdit:SetPoint("TOPLEFT", motdLabel, "BOTTOMLEFT", 0, -5)
+      motdEdit:SetBackdrop({bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", edgeSize = 8, insets = {left = 2, right = 2, top = 2, bottom = 2}})
+      motdEdit:SetBackdropColor(0, 0, 0, 0.8)
+      motdEdit:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+      motdEdit:SetTextColor(1, 1, 1, 1)
       motdEdit:SetAutoFocus(false)
       motdEdit:SetText(GetGuildRosterMOTD() or "")
+      motdEdit:SetTextInsets(6, 6, 3, 3)
+      motdEdit:SetMaxLetters(128)
       
       -- Info label
       local infoLabel = form:CreateFontString(nil, "OVERLAY")
@@ -750,11 +763,17 @@ function GuildUI:CreateUI()
       infoLabel:SetText("Информация о гильдии:")
       
       -- Info edit
-      local infoEdit = CreateFrame("EditBox", nil, form, "InputBoxTemplate")
+      local infoEdit = CreateFrame("EditBox", nil, form, "BackdropTemplate")
       infoEdit:SetSize(370, 22)
       infoEdit:SetPoint("TOPLEFT", infoLabel, "BOTTOMLEFT", 0, -5)
+      infoEdit:SetBackdrop({bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", edgeSize = 8, insets = {left = 2, right = 2, top = 2, bottom = 2}})
+      infoEdit:SetBackdropColor(0, 0, 0, 0.8)
+      infoEdit:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+      infoEdit:SetTextColor(1, 1, 1, 1)
       infoEdit:SetAutoFocus(false)
       infoEdit:SetText(GetGuildInfoText() or "")
+      infoEdit:SetTextInsets(6, 6, 3, 3)
+      infoEdit:SetMaxLetters(500)
       
       -- Save button
       local saveBtn = CreateButton(form, nil, "Сохранить", 100, 24)
