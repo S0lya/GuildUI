@@ -3,7 +3,7 @@
 
 local GuildUI = {}
 -- Enable debug prints to chat for diagnosing note/roster issues
-GuildUI.debug = true
+-- GuildUI.debug = true
 
 -- CreateFont wrapper: support both the Blizzard API `CreateFont(name)` and
 -- project convenience calls `CreateFont(parent, size, r, g, b, outline)`.
@@ -236,15 +236,9 @@ local function ReadGuildFrameLastSeen(rosterIndex)
     if sf and FauxScrollFrame_GetOffset then
       local offset = FauxScrollFrame_GetOffset(sf) or 0
       local visibleIndex = rosterIndex - (offset or 0)
-      if GuildUI and GuildUI.debug then
-        print("[GuildUI][DBG] ReadGuildFrameLastSeen: trying scroll=", scn, "offset=", offset, "visibleIndex=", visibleIndex)
-      end
       if visibleIndex and visibleIndex >= 1 and visibleIndex <= 40 then
         for _, pref in ipairs(prefixes) do
           local btn = _G[pref..tostring(visibleIndex)]
-          if GuildUI and GuildUI.debug then
-            print("[GuildUI][DBG] ReadGuildFrameLastSeen: trying btn=", pref..tostring(visibleIndex), "exists=", tostring(btn ~= nil))
-          end
           if btn then
             local regions = { btn:GetRegions() }
             for _, r in ipairs(regions) do
@@ -253,7 +247,6 @@ local function ReadGuildFrameLastSeen(rosterIndex)
                 if txt and txt ~= "" then
                   local low = tostring(txt):lower()
                   if string.find(low, "в сети") or string.find(low, "сек") or string.find(low, "мин") or string.find(low, "час") or string.find(low, "дн") or string.find(low, "посл") then
-                    if GuildUI and GuildUI.debug then print("[GuildUI][DBG] ReadGuildFrameLastSeen: found text=", tostring(txt), "via=", pref) end
                     return txt
                   end
                 end
@@ -270,9 +263,6 @@ local function ReadGuildFrameLastSeen(rosterIndex)
     for _, pref in ipairs(prefixes) do
       local btn = _G[pref..tostring(vi)]
       if btn then
-        if GuildUI and GuildUI.debug then
-          print("[GuildUI][DBG] ReadGuildFrameLastSeen: brute try btn=", pref..tostring(vi))
-        end
         local regions = { btn:GetRegions() }
         for _, r in ipairs(regions) do
           if r and type(r.GetText) == "function" then
@@ -280,7 +270,6 @@ local function ReadGuildFrameLastSeen(rosterIndex)
             if txt and txt ~= "" then
               local low = tostring(txt):lower()
               if string.find(low, "в сети") or string.find(low, "сек") or string.find(low, "мин") or string.find(low, "час") or string.find(low, "дн") or string.find(low, "посл") then
-                if GuildUI and GuildUI.debug then print("[GuildUI][DBG] ReadGuildFrameLastSeen: found text via brute=", tostring(txt), "btn=", pref..tostring(vi)) end
                 return txt
               end
             end
@@ -289,14 +278,12 @@ local function ReadGuildFrameLastSeen(rosterIndex)
       end
     end
   end
-  if GuildUI and GuildUI.debug then print("[GuildUI][DBG] ReadGuildFrameLastSeen: no match; tried=", table.concat(tried, ",")) end
   return nil
 end
 
 function GuildUI:CreateUI()
   if self.frame then return end
   if self._creating then
-    if self.debug then print("[GuildUI][WARN] CreateUI already in progress; skipping duplicate call") end
     return
   end
   self._creating = true
@@ -350,16 +337,26 @@ function GuildUI:CreateUI()
   end
   local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -6, -6)
-  -- Online/total counter to the left of the close button
+  close:SetScript("OnClick", function()
+    -- Hide overlay/shield/back button when main frame is closed
+    if GuildUI and GuildUI.manageOverlay then
+      local mp = GuildUI.manageOverlay
+      if mp.shield then mp.shield:Hide() end
+      if mp.backBtn then mp.backBtn:Hide() end
+      mp:Hide()
+    end
+    f:Hide()
+  end)
+  -- Online/total counter under the guild name (title)
   local countFS = CreateFont(f, 11, 1, 1, 1)
-  countFS:SetPoint("TOPRIGHT", close, "TOPLEFT", -8, -20)
+  countFS:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -37)
   countFS:SetText("Онлайн: 0/0")
   if countFS.SetShadowColor then countFS:SetShadowColor(0,0,0,1) end
   self.countFS = countFS
 
   -- Small launcher button to open a top invite popup
   local topInviteLauncher = CreateButton(f, "GuildUI_TopInviteLauncher", "Пригл", 48, 20)
-  topInviteLauncher:SetPoint("RIGHT", countFS, "LEFT", -8, 0)
+  topInviteLauncher:SetPoint("TOPRIGHT", f, "TOPRIGHT", -14, -26)
   topInviteLauncher:SetNormalFontObject("GameFontNormalSmall")
   self.topInviteLauncher = topInviteLauncher
 
@@ -395,7 +392,7 @@ function GuildUI:CreateUI()
     ed:SetScript("OnEscapePressed", function(self) pf:Hide() end)
     pf.edit = ed
 
-    local inviteBtn = CreateButton(pf, nil, "В группу", 80, 22)
+    local inviteBtn = CreateButton(pf, nil, "Пригласить", 80, 22)
     inviteBtn:SetPoint("RIGHT", pf, "RIGHT", -10, 0)
     inviteBtn:SetScript("OnClick", function()
       local txt = (ed:GetText() or ""):gsub("^%s+",""):gsub("%s+$","")
@@ -653,7 +650,6 @@ function GuildUI:CreateUI()
     if targetName == player then print("[GuildUI] Нельзя повышать себя.") return end
     -- remember to restore selection to this target after roster updates
     GuildUI.pendingRestore = targetName
-    if GuildUI.debug then print("[GuildUI][DBG] Set pendingRestore to " .. targetName) end
     GuildPromote(targetName)
     print("[GuildUI] Повышение: "..targetName)
     -- Force a roster refresh
@@ -703,16 +699,19 @@ function GuildUI:CreateUI()
     print("[GuildUI] Исключение: "..target.name)
   end)
 
-  -- Management placeholder button (visible only to guild master)
+  -- Management button (placeholder) - shows overlay panel (functionality to be added later)
   local manageBtn = CreateButton(right, "GuildUI_ManageBtn", "Управление", 120, 24)
-  -- place above Kick so buttons stack: Invite -> Demote -> Promote -> Kick -> Управление
   manageBtn:SetPoint("BOTTOMLEFT", kickBtn, "TOPLEFT", 0, 6)
   manageBtn:SetScript("OnClick", function()
-    print("[GuildUI] Управление нажата (заглушка)")
+    if GuildUI and GuildUI.ShowManageOverlay then
+      GuildUI:ShowManageOverlay()
+    else
+      print("[GuildUI] Управление - в разработке")
+    end
   end)
   manageBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:SetText("Управление гильдией\n(доступно только ГМу)")
+    GameTooltip:SetText("Управление гильдией")
     GameTooltip:Show()
   end)
   manageBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
@@ -726,6 +725,151 @@ function GuildUI:CreateUI()
   if offNoteFS then
     offNoteFS:ClearAllPoints()
     offNoteFS:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -152)
+  end
+
+  -- Inline manage overlay (replacement for removed manage.lua)
+  function GuildUI:CreateManageOverlay()
+    if self.manageOverlay then return self.manageOverlay end
+    if not self.frame then return end
+    local p = CreateFrame("Frame", "GuildUI_ManageOverlay", UIParent, "BackdropTemplate")
+    p:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 16, -46)
+    p:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -16, 16)
+    p.bg = CreateFrame("Frame", nil, p)
+    p.bg:SetAllPoints(p)
+    p.bg:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background" })
+    p.bg:SetBackdropColor(0.03,0.03,0.03,0.25)
+    p:EnableMouse(true)
+    p:SetFrameStrata("DIALOG")
+    p:SetToplevel(true)
+    local baseLevel = 50
+    if self.frame and self.frame.GetFrameLevel then
+      baseLevel = (self.frame:GetFrameLevel() or 0) + 50
+    end
+    p:SetFrameLevel(baseLevel + 30)
+
+    local mtitle = CreateFont(p, 14, 1,1,1, true)
+    mtitle:SetPoint("TOPLEFT", p, "TOPLEFT", 8, -8)
+    mtitle:SetText("Управление")
+
+    p.bg:EnableMouse(true)
+    p.bg:SetFrameLevel(baseLevel)
+    p.bg:SetScript("OnMouseDown", function() end)
+    p:SetScript("OnMouseDown", function() end)
+    -- shield: invisible frame above background that captures mouse events
+    local shield = CreateFrame("Frame", "GuildUI_ManageShield", p)
+    shield:SetAllPoints(p)
+    shield:EnableMouse(true)
+    shield:SetFrameStrata("DIALOG")
+    shield:SetFrameLevel(baseLevel + 25)
+    shield:SetScript("OnMouseDown", function() end)
+    shield:SetScript("OnMouseUp", function() end)
+    shield:Hide()
+    p.shield = shield
+
+    local back = CreateButton(UIParent, "GuildUI_ManageBackBtn", "Назад", 120, 24)
+    back:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -16, 12)
+    back:SetFrameStrata("DIALOG")
+    back:SetFrameLevel(baseLevel + 150)
+    back:SetToplevel(true)
+    back:EnableMouse(true)
+    back:SetScript("OnClick", function()
+      GuildUI:HideManageOverlay()
+    end)
+    p.backBtn = back
+    -- ensure shield sits well below the back button
+    if p.shield then p.shield:SetFrameLevel(baseLevel + 25) end
+
+    -- Guild info editing
+    local motdLabel = CreateFont(p, 12, 1,1,1, true)
+    motdLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 8, -30)
+    motdLabel:SetText("Сообщение дня:")
+    motdLabel:SetAlpha(1)
+
+    local motdEdit = CreateFrame("EditBox", nil, p, "InputBoxTemplate")
+    motdEdit:SetSize(400, 22)
+    motdEdit:SetPoint("TOPLEFT", motdLabel, "BOTTOMLEFT", 0, -5)
+    motdEdit:SetAutoFocus(false)
+    motdEdit:EnableKeyboard(true)
+    motdEdit:EnableMouse(true)
+    motdEdit:SetText(GetGuildRosterMOTD() or "")
+    motdEdit:SetFrameLevel(baseLevel + 35)
+    motdEdit:SetAlpha(1)
+
+    local infoLabel = CreateFont(p, 12, 1,1,1, true)
+    infoLabel:SetPoint("TOPLEFT", motdEdit, "BOTTOMLEFT", 0, -15)
+    infoLabel:SetText("Информация о гильдии:")
+    infoLabel:SetAlpha(1)
+
+    local infoEdit = CreateFrame("EditBox", nil, p, "InputBoxTemplate")
+    infoEdit:SetSize(400, 22)
+    infoEdit:SetPoint("TOPLEFT", infoLabel, "BOTTOMLEFT", 0, -5)
+    infoEdit:SetAutoFocus(false)
+    infoEdit:EnableKeyboard(true)
+    infoEdit:EnableMouse(true)
+    infoEdit:SetText(GetGuildInfoText() or "")
+    infoEdit:SetFrameLevel(baseLevel + 35)
+    infoEdit:SetAlpha(1)
+
+    local saveBtn = CreateButton(p, "GuildUI_SaveGuildInfoBtn", "Сохранить", 120, 24)
+    saveBtn:SetPoint("TOPLEFT", infoEdit, "BOTTOMLEFT", 0, -10)
+    saveBtn:SetFrameLevel(baseLevel + 35)
+    saveBtn:SetAlpha(1)
+
+    p:Hide()
+    self.manageOverlay = p
+    return p
+  end
+
+  function GuildUI:ShowManageOverlay()
+    if not self.frame then return end
+    if not self.manageOverlay then self:CreateManageOverlay() end
+    if self._manageTransition then return end
+    self._manageTransition = true
+    local left, right, mp = self.left, self.right, self.manageOverlay
+    local dur = 0.12
+    -- Show overlay and its shield immediately (prevent clicks passing through during transition)
+    if mp then 
+      mp:SetAlpha(0)
+      mp:Show()
+      if mp.shield then mp.shield:Show() end
+      if mp.backBtn then mp.backBtn:Show() end
+    end
+    if left and left:IsShown() then if UIFrameFadeOut then UIFrameFadeOut(left, dur, left:GetAlpha() or 1, 0) else left:SetAlpha(0) end end
+    if right and right:IsShown() then if UIFrameFadeOut then UIFrameFadeOut(right, dur, right:GetAlpha() or 1, 0) else right:SetAlpha(0) end end
+    if C_Timer and C_Timer.After then
+      C_Timer.After(dur, function()
+        if left then left:Hide(); left:SetAlpha(1) end
+        if right then right:Hide(); right:SetAlpha(1) end
+        if mp then mp:SetAlpha(0); mp:Show(); if mp.shield then mp.shield:Show() end; if mp.backBtn then mp.backBtn:Show() end; if UIFrameFadeIn then UIFrameFadeIn(mp, dur, 0, 1) else mp:SetAlpha(1) end end
+        C_Timer.After(dur, function() self._manageTransition = nil end)
+      end)
+    else
+      if left then left:Hide() end
+      if right then right:Hide() end
+      if mp then if mp.shield then mp.shield:Show() end; mp:Show(); if mp.backBtn then mp.backBtn:Show() end end
+      self._manageTransition = nil
+    end
+  end
+
+  function GuildUI:HideManageOverlay()
+    if not self.frame or not self.manageOverlay then return end
+    -- Remove transition lock so repeated clicks work
+    local left, right, mp = self.left, self.right, self.manageOverlay
+    -- Hide overlay elements immediately
+    if mp then
+      if mp.shield then mp.shield:Hide() end
+      if mp.backBtn then mp.backBtn:Hide() end
+      mp:Hide()
+    end
+    -- Restore main panels immediately
+    if left then left:Show(); left:SetAlpha(1) end
+    if right then right:Show(); right:SetAlpha(1) end
+    -- Refresh members/list
+    pcall(function()
+      if self and self.UpdateMembers then self:UpdateMembers() end
+      if self and self.UpdateList then self:UpdateList("") end
+    end)
+    self._manageTransition = nil
   end
 
   function GuildUI:SelectMember(index)
@@ -836,6 +980,7 @@ function GuildUI:CreateUI()
   self:UpdateMembers()
   self._creating = nil
 end
+
 
 function GuildUI:OnEvent(event, ...)
   if event == "GUILD_ROSTER_UPDATE" or event == "PLAYER_GUILD_UPDATE" then
@@ -1031,24 +1176,24 @@ function GuildUI:UpdateMembers()
   if self.ApplySort then self:ApplySort() end
   if self.UpdateHeaderSortIndicators then self:UpdateHeaderSortIndicators() end
 
-  -- Update management button state (only enabled for guild master)
-  if self.manageBtn then
-    local isGM = false
-    local player = UnitName("player")
-    for _, m in ipairs(self.members) do
-      if m and m.name and string.lower(m.name) == string.lower(player) then
-        if tonumber(m.rankIndex) == 0 then isGM = true end
-        break
-      end
-    end
-    if isGM then
-      if self.manageBtn.Enable then pcall(function() self.manageBtn:Enable() end) end
-      self.manageBtn:SetAlpha(1)
-    else
-      if self.manageBtn.Disable then pcall(function() self.manageBtn:Disable() end) end
-      self.manageBtn:SetAlpha(0.5)
-    end
-  end
+  -- Update management button state (disabled for now)
+  -- if self.manageBtn then
+  --   local isGM = false
+  --   local player = UnitName("player")
+  --   for _, m in ipairs(self.members) do
+  --     if m and m.name and string.lower(m.name) == string.lower(player) then
+  --       if tonumber(m.rankIndex) == 0 then isGM = true end
+  --       break
+  --     end
+  --   end
+  --   if isGM then
+  --     if self.manageBtn.Enable then pcall(function() self.manageBtn:Enable() end) end
+  --     self.manageBtn:SetAlpha(1)
+  --   else
+  --     if self.manageBtn.Disable then pcall(function() self.manageBtn:Disable() end) end
+  --     self.manageBtn:SetAlpha(0.5)
+  --   end
+  -- end
 
   -- restore selection if possible (match by name) - after sorting to get correct indices
   local prevSelectedName = nil
@@ -1306,6 +1451,12 @@ SlashCmdList["GUILDUI"] = function(msg)
   if not GuildUI.frame then GuildUI:CreateUI() end
   if GuildUI.frame:IsShown() then GuildUI.frame:Hide() else GuildUI.frame:Show() end
 end
+
+-- Quick test command to open the manage panel (disabled)
+-- SLASH_GUILDMANAGE1 = "/gmanage"
+-- SlashCmdList["GUILDMANAGE"] = function(msg)
+--   print("[GuildUI] Управление - в разработке")
+-- end
 
 -- Auto-create at load? we keep manual via slash command
 _G.GuildUI = GuildUI

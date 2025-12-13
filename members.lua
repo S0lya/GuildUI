@@ -46,7 +46,7 @@ function GuildUI:CreateMembersUI(parent)
   colClass:SetPoint("TOPLEFT", left, "TOPLEFT", 150, colY)
   colClass:SetText("Класс")
   local colLast = CreateFont(left, 11, 0.9,0.9,0.9, true)
-  colLast:SetPoint("TOPLEFT", left, "TOPLEFT", 218, colY)
+  colLast:SetPoint("TOPLEFT", left, "TOPLEFT", 223, colY)
   colLast:SetText("Зона")
 
   -- neat arrow indicators
@@ -199,7 +199,7 @@ function GuildUI:CreateMembersUI(parent)
   local zoneMenu = CreateFrame("Frame", "GuildUI_ZoneMenu", UIParent, "UIDropDownMenuTemplate")
   if not GuildUI.showZoneColumn then GuildUI.showZoneColumn = true end
   if not GuildUI.onlineFilter then GuildUI.onlineFilter = "all" end
-  local zoneHeaderButton = makeHeaderButton(218, 90, function() GuildUI:SetSort(GuildUI.showZoneColumn and "zone" or "lastSeen") end)
+  local zoneHeaderButton = makeHeaderButton(223, 90, function() GuildUI:SetSort(GuildUI.showZoneColumn and "zone" or "lastSeen") end)
   zoneHeaderButton:EnableMouse(true)
   zoneHeaderButton:SetScript("OnMouseUp", function(_, button)
     if button == "RightButton" then
@@ -259,8 +259,10 @@ function GuildUI:CreateMembersUI(parent)
           -- draw class icon above the highlight so it stays visually unchanged
           row.classIcon:SetDrawLayer("OVERLAY", 2)
           row.lastFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-          row.lastFS:SetPoint("LEFT", row, "LEFT", 210, 0)
-          row.lastFS:SetWidth(70)
+          row.lastFS:SetPoint("LEFT", row, "LEFT", 215, 0)
+          -- widen a bit and enforce single-line without wrapping
+          row.lastFS:SetWidth(90)
+          if row.lastFS.SetWordWrap then row.lastFS:SetWordWrap(true) end
           if row.nameFS.SetJustifyH then row.nameFS:SetJustifyH("LEFT") end
           if row.rankFS.SetJustifyH then row.rankFS:SetJustifyH("LEFT") end
           if row.classFS.SetJustifyH then row.classFS:SetJustifyH("LEFT") end
@@ -307,7 +309,19 @@ function GuildUI:CreateMembersUI(parent)
               if self.classIcon then pcall(function() self.classIcon:SetVertexColor(1,1,1) end) end
               if self.lastFS and self.lastColor then pcall(function() self.lastFS:SetTextColor(self.lastColor[1], self.lastColor[2], self.lastColor[3]) end) end
             end
+            GameTooltip:Hide()
           end)
+          -- Tooltip for zone text only when truncated
+          if row.lastFS and row.lastFS.SetScript then
+            row.lastFS:SetScript("OnEnter", function(fs)
+              if fs._truncated and fs._fullText then
+                GameTooltip:SetOwner(fs, "ANCHOR_RIGHT")
+                GameTooltip:SetText(fs._fullText)
+                GameTooltip:Show()
+              end
+            end)
+            row.lastFS:SetScript("OnLeave", function() GameTooltip:Hide() end)
+          end
           row:SetScript("OnClick", function(self)
             GuildUI:SelectMember(self._memberIndex)
           end)
@@ -326,15 +340,9 @@ function GuildUI:CreateMembersUI(parent)
           end
           if iconFile then
             local path = "Interface\\AddOns\\GuildUI\\media\\icons\\"..iconFile..".blp"
-            if GuildUI and GuildUI.debug then
-              print("[GuildUI][ICON] row=", tostring(m.name), "class=", tostring(m.class), "token=", tostring(token), "iconFile=", tostring(iconFile), "path=", path)
-            end
             row.classIcon:SetTexture(path)
             row.classIcon:Show()
           else
-            if GuildUI and GuildUI.debug then
-              print("[GuildUI][ICON] row=", tostring(m.name), "class=", tostring(m.class), "no iconFile")
-            end
             row.classIcon:Hide()
           end
         end
@@ -392,7 +400,11 @@ function GuildUI:CreateMembersUI(parent)
           else
             if m.online then lastText = "В сети" else lastText = "Не в сети" end
           end
+          -- track full text and truncation state for tooltip
+          row.lastFS._fullText = lastText
           row.lastFS:SetText(lastText)
+          local truncated = false
+          row.lastFS._truncated = truncated
           row:Show()
           idx = idx + 1
         end
