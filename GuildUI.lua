@@ -701,17 +701,84 @@ function GuildUI:CreateUI()
 
   -- Management button (placeholder) - shows overlay panel (functionality to be added later)
   local manageBtn = CreateButton(right, "GuildUI_ManageBtn", "Управление", 120, 24)
+  -- Management button - shows modal edit form for guild MOTD and info
+  local manageBtn = CreateButton(right, "GuildUI_ManageBtn", "Управление", 120, 24)
   manageBtn:SetPoint("BOTTOMLEFT", kickBtn, "TOPLEFT", 0, 6)
   manageBtn:SetScript("OnClick", function()
-    if GuildUI and GuildUI.ShowManageOverlay then
-      GuildUI:ShowManageOverlay()
-    else
-      print("[GuildUI] Управление - в разработке")
+    if not GuildUI._editForm then
+      -- Create edit form once
+      local form = CreateFrame("Frame", "GuildUI_EditForm", UIParent, "BackdropTemplate")
+      form:SetSize(400, 300)
+      form:SetPoint("CENTER", UIParent, "CENTER")
+      form:SetBackdrop({bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", edgeSize = 16, insets = {left = 4, right = 4, top = 4, bottom = 4}})
+      form:SetBackdropColor(0, 0, 0, 1)
+      form:SetFrameStrata("FULLSCREEN")
+      form:SetFrameLevel(100)
+      form:EnableMouse(true)
+      form:SetMovable(true)
+      form:RegisterForDrag("LeftButton")
+      form:SetScript("OnDragStart", function(self) self:StartMoving() end)
+      form:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+      
+      -- Title
+      local title = form:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+      title:SetPoint("TOPLEFT", form, "TOPLEFT", 12, -12)
+      title:SetText("Управление гильдией")
+      
+      -- Close button
+      local closeBtn = CreateButton(form, nil, "X", 24, 24)
+      closeBtn:SetPoint("TOPRIGHT", form, "TOPRIGHT", -8, -8)
+      closeBtn:SetScript("OnClick", function() form:Hide() end)
+      
+      -- MOTD label
+      local motdLabel = form:CreateFontString(nil, "OVERLAY")
+      motdLabel:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+      motdLabel:SetPoint("TOPLEFT", form, "TOPLEFT", 12, -40)
+      motdLabel:SetText("Сообщение дня (MOTD):")
+      
+      -- MOTD edit
+      local motdEdit = CreateFrame("EditBox", nil, form, "InputBoxTemplate")
+      motdEdit:SetSize(370, 22)
+      motdEdit:SetPoint("TOPLEFT", motdLabel, "BOTTOMLEFT", 0, -5)
+      motdEdit:SetAutoFocus(false)
+      motdEdit:SetText(GetGuildRosterMOTD() or "")
+      
+      -- Info label
+      local infoLabel = form:CreateFontString(nil, "OVERLAY")
+      infoLabel:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+      infoLabel:SetPoint("TOPLEFT", motdEdit, "BOTTOMLEFT", 0, -15)
+      infoLabel:SetText("Информация о гильдии:")
+      
+      -- Info edit
+      local infoEdit = CreateFrame("EditBox", nil, form, "InputBoxTemplate")
+      infoEdit:SetSize(370, 22)
+      infoEdit:SetPoint("TOPLEFT", infoLabel, "BOTTOMLEFT", 0, -5)
+      infoEdit:SetAutoFocus(false)
+      infoEdit:SetText(GetGuildInfoText() or "")
+      
+      -- Save button
+      local saveBtn = CreateButton(form, nil, "Сохранить", 100, 24)
+      saveBtn:SetPoint("BOTTOMLEFT", form, "BOTTOMLEFT", 12, 12)
+      saveBtn:SetScript("OnClick", function()
+        if GuildSetMOTD then GuildSetMOTD(motdEdit:GetText()) end
+        if SetGuildInfoText then SetGuildInfoText(infoEdit:GetText()) end
+        print("[GuildUI] Информация о гильдии сохранена")
+        form:Hide()
+      end)
+      
+      -- Cancel button
+      local cancelBtn = CreateButton(form, nil, "Отмена", 100, 24)
+      cancelBtn:SetPoint("LEFT", saveBtn, "RIGHT", 10, 0)
+      cancelBtn:SetScript("OnClick", function() form:Hide() end)
+      
+      GuildUI._editForm = form
     end
+    
+    GuildUI._editForm:Show()
   end)
   manageBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:SetText("Управление гильдией")
+    GameTooltip:SetText("Редактировать информацию о гильдии\n(MOTD и описание)")
     GameTooltip:Show()
   end)
   manageBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
@@ -731,6 +798,7 @@ function GuildUI:CreateUI()
   function GuildUI:CreateManageOverlay()
     if self.manageOverlay then return self.manageOverlay end
     if not self.frame then return end
+    print("1")
     local p = CreateFrame("Frame", "GuildUI_ManageOverlay", UIParent, "BackdropTemplate")
     p:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 16, -46)
     p:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -16, 16)
@@ -738,7 +806,7 @@ function GuildUI:CreateUI()
     p.bg:SetAllPoints(p)
     p.bg:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background" })
     p.bg:SetBackdropColor(0.03,0.03,0.03,0.25)
-    p:EnableMouse(true)
+    p:EnableMouse(false)
     p:SetFrameStrata("DIALOG")
     p:SetToplevel(true)
     local baseLevel = 50
@@ -751,7 +819,7 @@ function GuildUI:CreateUI()
     mtitle:SetPoint("TOPLEFT", p, "TOPLEFT", 8, -8)
     mtitle:SetText("Управление")
 
-    p.bg:EnableMouse(true)
+    p.bg:EnableMouse(false)
     p.bg:SetFrameLevel(baseLevel)
     p.bg:SetScript("OnMouseDown", function() end)
     p:SetScript("OnMouseDown", function() end)
@@ -766,8 +834,8 @@ function GuildUI:CreateUI()
     shield:Hide()
     p.shield = shield
 
-    local back = CreateButton(UIParent, "GuildUI_ManageBackBtn", "Назад", 120, 24)
-    back:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -16, 12)
+    local back = CreateButton(p, "GuildUI_ManageBackBtn", "Назад", 120, 24)
+    back:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -16, 40)
     back:SetFrameStrata("DIALOG")
     back:SetFrameLevel(baseLevel + 150)
     back:SetToplevel(true)
@@ -780,25 +848,38 @@ function GuildUI:CreateUI()
     if p.shield then p.shield:SetFrameLevel(baseLevel + 25) end
 
     -- Guild info editing
+    print("3")
     local motdLabel = CreateFont(p, 12, 1,1,1, true)
-    motdLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 8, -30)
+    motdLabel:SetPoint("CENTER", p, "CENTER", 0, 100)
     motdLabel:SetText("Сообщение дня:")
     motdLabel:SetAlpha(1)
+    motdLabel:Show()
+    p.motdLabel = motdLabel
 
     local motdEdit = CreateFrame("EditBox", nil, p, "InputBoxTemplate")
     motdEdit:SetSize(400, 22)
-    motdEdit:SetPoint("TOPLEFT", motdLabel, "BOTTOMLEFT", 0, -5)
+    motdEdit:SetPoint("TOP", motdLabel, "BOTTOM", 0, -5)
     motdEdit:SetAutoFocus(false)
     motdEdit:EnableKeyboard(true)
     motdEdit:EnableMouse(true)
     motdEdit:SetText(GetGuildRosterMOTD() or "")
-    motdEdit:SetFrameLevel(baseLevel + 35)
+    motdEdit:SetFrameLevel(baseLevel + 200)
     motdEdit:SetAlpha(1)
+    motdEdit:Show()
+    -- debug background to visualize position
+    local dbg = motdEdit:CreateTexture(nil, "BACKGROUND")
+    dbg:SetAllPoints(motdEdit)
+    dbg:SetTexture("Interface\\Buttons\\WHITE8x8")
+    dbg:SetVertexColor(0, 0.2, 0.6, 0.25)
+    motdEdit._dbg = dbg
+    p.motdEdit = motdEdit
 
     local infoLabel = CreateFont(p, 12, 1,1,1, true)
     infoLabel:SetPoint("TOPLEFT", motdEdit, "BOTTOMLEFT", 0, -15)
     infoLabel:SetText("Информация о гильдии:")
     infoLabel:SetAlpha(1)
+    infoLabel:Show()
+    p.infoLabel = infoLabel
 
     local infoEdit = CreateFrame("EditBox", nil, p, "InputBoxTemplate")
     infoEdit:SetSize(400, 22)
@@ -807,13 +888,36 @@ function GuildUI:CreateUI()
     infoEdit:EnableKeyboard(true)
     infoEdit:EnableMouse(true)
     infoEdit:SetText(GetGuildInfoText() or "")
-    infoEdit:SetFrameLevel(baseLevel + 35)
+    infoEdit:SetFrameLevel(baseLevel + 200)
     infoEdit:SetAlpha(1)
+    infoEdit:Show()
+    local dbg2 = infoEdit:CreateTexture(nil, "BACKGROUND")
+    dbg2:SetAllPoints(infoEdit)
+    dbg2:SetTexture("Interface\\Buttons\\WHITE8x8")
+    dbg2:SetVertexColor(0.6, 0.2, 0, 0.25)
+    infoEdit._dbg = dbg2
+    p.infoEdit = infoEdit
 
     local saveBtn = CreateButton(p, "GuildUI_SaveGuildInfoBtn", "Сохранить", 120, 24)
     saveBtn:SetPoint("TOPLEFT", infoEdit, "BOTTOMLEFT", 0, -10)
-    saveBtn:SetFrameLevel(baseLevel + 35)
+    saveBtn:SetFrameLevel(baseLevel + 200)
     saveBtn:SetAlpha(1)
+    saveBtn:SetScript("OnClick", function()
+      local motd = motdEdit:GetText()
+      local info = infoEdit:GetText()
+      if GuildSetMOTD then GuildSetMOTD(motd) end
+      if SetGuildInfoText then SetGuildInfoText(info) end
+      print("[GuildUI] Информация о гильдии обновлена")
+    end)
+    saveBtn:Show()
+    -- debug background for save button
+    local sbg = saveBtn:CreateTexture(nil, "BACKGROUND")
+    sbg:SetPoint("TOPLEFT", saveBtn, "TOPLEFT", -4, 4)
+    sbg:SetPoint("BOTTOMRIGHT", saveBtn, "BOTTOMRIGHT", 4, -4)
+    sbg:SetTexture("Interface\\Buttons\\WHITE8x8")
+    sbg:SetVertexColor(0, 0.6, 0.2, 0.25)
+    saveBtn._dbg = sbg
+    p.saveBtn = saveBtn
 
     p:Hide()
     self.manageOverlay = p
@@ -824,6 +928,7 @@ function GuildUI:CreateUI()
     if not self.frame then return end
     if not self.manageOverlay then self:CreateManageOverlay() end
     if self._manageTransition then return end
+    print("2")
     self._manageTransition = true
     local left, right, mp = self.left, self.right, self.manageOverlay
     local dur = 0.12
@@ -831,8 +936,23 @@ function GuildUI:CreateUI()
     if mp then 
       mp:SetAlpha(0)
       mp:Show()
-      if mp.shield then mp.shield:Show() end
+      if mp.shield then mp.shield:Hide() end
       if mp.backBtn then mp.backBtn:Show() end
+      -- Ensure guild info elements are visible
+      if mp.motdLabel then mp.motdLabel:SetAlpha(1) end
+      if mp.motdEdit then mp.motdEdit:SetAlpha(1) end
+      if mp.infoLabel then mp.infoLabel:SetAlpha(1) end
+      if mp.infoEdit then mp.infoEdit:SetAlpha(1) end
+      if mp.saveBtn then mp.saveBtn:SetAlpha(1) end
+      -- Debug: print strata/levels to help diagnose visibility
+      if mp.GetFrameLevel and mp.GetFrameStrata then
+        print("[GuildUI][DBG] overlay:", mp:GetName(), mp:GetFrameStrata(), mp:GetFrameLevel())
+      end
+      if mp.bg and mp.bg.GetFrameLevel then print("[GuildUI][DBG] bg:", mp.bg:GetName() or "bg", (mp.bg.GetFrameStrata and mp.bg:GetFrameStrata()) or "?", (mp.bg.GetFrameLevel and mp.bg:GetFrameLevel()) or "?") end
+      if mp.shield and mp.shield.GetFrameLevel then print("[GuildUI][DBG] shield:", mp.shield:GetName() or "shield", (mp.shield.GetFrameStrata and mp.shield:GetFrameStrata()) or "?", (mp.shield.GetFrameLevel and mp.shield:GetFrameLevel()) or "?") end
+      if mp.backBtn and mp.backBtn.GetFrameLevel then print("[GuildUI][DBG] backBtn:", mp.backBtn:GetName() or "backBtn", (mp.backBtn.GetFrameStrata and mp.backBtn:GetFrameStrata()) or "?", (mp.backBtn.GetFrameLevel and mp.backBtn:GetFrameLevel()) or "?") end
+      if mp.motdEdit and mp.motdEdit.GetFrameLevel then print("[GuildUI][DBG] motdEdit:", mp.motdEdit:GetName() or "motdEdit", (mp.motdEdit.GetFrameStrata and mp.motdEdit:GetFrameStrata()) or "?", (mp.motdEdit.GetFrameLevel and mp.motdEdit:GetFrameLevel()) or "?") end
+      if mp.infoEdit and mp.infoEdit.GetFrameLevel then print("[GuildUI][DBG] infoEdit:", mp.infoEdit:GetName() or "infoEdit", (mp.infoEdit.GetFrameStrata and mp.infoEdit:GetFrameStrata()) or "?", (mp.infoEdit.GetFrameLevel and mp.infoEdit:GetFrameLevel()) or "?") end
     end
     if left and left:IsShown() then if UIFrameFadeOut then UIFrameFadeOut(left, dur, left:GetAlpha() or 1, 0) else left:SetAlpha(0) end end
     if right and right:IsShown() then if UIFrameFadeOut then UIFrameFadeOut(right, dur, right:GetAlpha() or 1, 0) else right:SetAlpha(0) end end
@@ -840,13 +960,20 @@ function GuildUI:CreateUI()
       C_Timer.After(dur, function()
         if left then left:Hide(); left:SetAlpha(1) end
         if right then right:Hide(); right:SetAlpha(1) end
-        if mp then mp:SetAlpha(0); mp:Show(); if mp.shield then mp.shield:Show() end; if mp.backBtn then mp.backBtn:Show() end; if UIFrameFadeIn then UIFrameFadeIn(mp, dur, 0, 1) else mp:SetAlpha(1) end end
+        if mp then mp:SetAlpha(0); mp:Show(); if mp.shield then mp.shield:Hide() end; if mp.backBtn then mp.backBtn:Show() end; if UIFrameFadeIn then UIFrameFadeIn(mp, dur, 0, 1) else mp:SetAlpha(1) end
+          -- Ensure guild info elements are visible after fade
+          if mp.motdLabel then mp.motdLabel:SetAlpha(1); mp.motdLabel:Show() end
+          if mp.motdEdit then mp.motdEdit:SetAlpha(1); mp.motdEdit:Show() end
+          if mp.infoLabel then mp.infoLabel:SetAlpha(1); mp.infoLabel:Show() end
+          if mp.infoEdit then mp.infoEdit:SetAlpha(1); mp.infoEdit:Show() end
+          if mp.saveBtn then mp.saveBtn:SetAlpha(1); mp.saveBtn:Show() end
+        end
         C_Timer.After(dur, function() self._manageTransition = nil end)
       end)
     else
       if left then left:Hide() end
       if right then right:Hide() end
-      if mp then if mp.shield then mp.shield:Show() end; mp:Show(); if mp.backBtn then mp.backBtn:Show() end end
+      if mp then if mp.shield then mp.shield:Hide() end; mp:Show(); if mp.backBtn then mp.backBtn:Show() end end
       self._manageTransition = nil
     end
   end
